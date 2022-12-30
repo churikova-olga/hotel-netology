@@ -18,14 +18,6 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 }
 
 @Injectable()
-export class AllowNullUserGuard extends AuthGuard('jwt') {
-  handleRequest(err, user) {
-    // Если пользователь на авторизован, то user = null
-    return user || null;
-  }
-}
-
-@Injectable()
 export class GatewaySocketGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     // regular `Socket` from socket.io is probably sufficient

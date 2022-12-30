@@ -1,12 +1,12 @@
 import { Schema, Prop, SchemaFactory } from '@nestjs/mongoose';
 import * as mongoose from 'mongoose';
 import { User } from '../../user/mongoose/user.schema';
-import { Hotel } from '../../Hotel/mongoose/hotel.schema';
-import { HotelRoom } from '../../Hotel/mongoose/hotel.room.schema';
-export type BookingDocument = Booking & Document;
+import { Hotel } from '../../hotel/mongoose/hotel.schema';
+import { HotelRoom } from '../../hotel/mongoose/hotel.room.schema';
+export type ReservationDocument = Reservation & Document;
 
 @Schema()
-export class Booking {
+export class Reservation {
   _id: mongoose.Types.ObjectId;
 
   @Prop({
@@ -37,4 +37,4 @@ export class Booking {
   public dateEnd: Date;
 }
 
-export const BookingSchema = SchemaFactory.createForClass(Booking);
+export const ReservationSchema = SchemaFactory.createForClass(Reservation);

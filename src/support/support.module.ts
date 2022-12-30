@@ -6,10 +6,12 @@ import {
   SupportRequest,
   SupportSchema,
 } from './mongoose/support.schema';
-import { SupportService } from './support.service';
+import { SupportRequestService } from './support.request.service';
 import { SupportController } from './support.controller';
 import { ChatGateway } from './chat.gateway';
 import { AuthModule } from '../auth/auth.module';
+import { SupportRequestClientService } from './support.request.client.service';
+import { SupportRequestEmployeeService } from './support.request.employee.service';
 
 @Module({
   imports: [
@@ -20,7 +22,17 @@ import { AuthModule } from '../auth/auth.module';
     forwardRef(() => AuthModule),
   ],
   controllers: [SupportController],
-  providers: [SupportService, ChatGateway],
-  exports: [SupportService, ChatGateway],
+  providers: [
+    SupportRequestService,
+    ChatGateway,
+    SupportRequestClientService,
+    SupportRequestEmployeeService,
+  ],
+  exports: [
+    SupportRequestService,
+    ChatGateway,
+    SupportRequestClientService,
+    SupportRequestEmployeeService,
+  ],
 })
 export class SupportModule {}

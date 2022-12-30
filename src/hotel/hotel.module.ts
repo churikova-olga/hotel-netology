@@ -5,18 +5,19 @@ import { HotelService } from './hotel.service';
 import { MongooseModule } from '@nestjs/mongoose';
 import { HotelSchema, Hotel } from './mongoose/hotel.schema';
 import { HotelRoomSchema, HotelRoom } from './mongoose/hotel.room.schema';
-import { BookingModule } from '../booking/booking.module';
+import { ReservationModule } from '../reservation/reservation.module';
+import { HotelRoomService } from './hotel.room.service';
 
 @Module({
   imports: [
-    forwardRef(() => BookingModule),
+    forwardRef(() => ReservationModule),
     MongooseModule.forFeature([
       { name: Hotel.name, schema: HotelSchema },
       { name: HotelRoom.name, schema: HotelRoomSchema },
     ]),
   ],
   controllers: [HotelCommonController, HotelAdminController],
-  providers: [HotelService],
-  exports: [HotelService],
+  providers: [HotelService, HotelRoomService],
+  exports: [HotelService, HotelRoomService],
 })
 export class HotelModule {}

@@ -3,10 +3,10 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { MongooseModule } from '@nestjs/mongoose';
 import { UserModule } from './user/user.module';
-import { HotelModule } from './Hotel/hotel.module';
+import { HotelModule } from './hotel/hotel.module';
 import { AuthModule } from './auth/auth.module';
 import { MulterModule } from '@nestjs/platform-express';
-import { BookingModule } from './booking/booking.module';
+import { ReservationModule } from './reservation/reservation.module';
 import { SupportModule } from './support/support.module';
 
 @Module({
@@ -15,7 +15,7 @@ import { SupportModule } from './support/support.module';
     UserModule,
     AuthModule,
     HotelModule,
-    BookingModule,
+    ReservationModule,
     SupportModule,
     MulterModule.register({
       dest: './uploads',

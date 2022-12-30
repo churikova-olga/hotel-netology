@@ -1,19 +1,19 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
-import { HotelService } from './hotel.service';
+import { HotelRoomService } from './hotel.room.service';
 import { User } from '../auth/decorator/user.decorator';
 
 @Controller('/api/common')
 export class HotelCommonController {
-  constructor(private readonly hotelService: HotelService) {}
+  constructor(private readonly hotelRoomService: HotelRoomService) {}
   @Get('/hotel-rooms/:id/')
   async findIdRoom(@Param('id') id: string) {
-    return await this.hotelService.findByidHotelRoom(id);
+    return await this.hotelRoomService.findById(id);
   }
 
   @Get('/hotel-rooms/')
   async getHotelRoom(
     @User() currentUser: any,
-    @Query('title') hotel: string,
+    @Query('hotel') hotel: string,
     @Query('limit') limit: number,
     @Query('offset') offset: number,
   ) {
@@ -27,6 +27,6 @@ export class HotelCommonController {
       params.isEnabled = true;
     }
 
-    return await this.hotelService.searchHotelRoom(params);
+    return await this.hotelRoomService.search(params);
   }
 }

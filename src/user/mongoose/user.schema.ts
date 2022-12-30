@@ -6,7 +6,16 @@ export type UserDocument = User & Document;
 export class User {
   _id: mongoose.Types.ObjectId;
 
-  @Prop({ required: true })
+  @Prop({
+    required: true,
+    unique: true,
+    validate: {
+      validator: function (email) {
+        return /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(email);
+      },
+      message: 'Please enter a valid email',
+    },
+  })
   public email: string;
 
   @Prop({ required: true })

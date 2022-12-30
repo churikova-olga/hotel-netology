@@ -21,23 +21,27 @@ import { Roles } from '../auth/guards/roles.meta';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { editFileName, imageFileFilter } from '../utils/file-upload.utils';
 import { diskStorage } from 'multer';
+import { HotelRoomService } from './hotel.room.service';
 
 @Controller('/api/admin')
 @UseGuards(RolesGuard)
 @UseGuards(JwtAuthGuard)
 export class HotelAdminController {
-  constructor(private readonly hotelService: HotelService) {}
+  constructor(
+    private readonly hotelService: HotelService,
+    private readonly hotelRoomService: HotelRoomService,
+  ) {}
 
   @Roles('admin')
   @Post('/hotels/')
   async createHotel(@Body() data: any) {
-    return await this.hotelService.createHotel(data);
+    return await this.hotelService.create(data);
   }
 
   @Roles('admin')
   @Get('/hotels/:id/')
   async findId(@Param('id') id: string) {
-    return await this.hotelService.findByidHotel(id);
+    return await this.hotelService.findById(id);
   }
 
   @Roles('admin')
@@ -52,13 +56,13 @@ export class HotelAdminController {
       limit: limit,
       offset: offset,
     };
-    return await this.hotelService.searchHotel(params);
+    return await this.hotelService.search(params);
   }
 
   @Roles('admin')
   @Put('/hotels/:id/')
   async updateHotel(@Param('id') id: string, @Body() data: UpdateHotelParams) {
-    return await this.hotelService.updateHotel(id, data);
+    return await this.hotelService.update(id, data);
   }
 
   @Roles('admin')
@@ -82,7 +86,7 @@ export class HotelAdminController {
       response.push(fileReponse);
     });
     data.images = response;
-    return await this.hotelService.createHotelRoom(data);
+    return await this.hotelRoomService.create(data);
   }
 
   @Roles('admin')
@@ -101,7 +105,6 @@ export class HotelAdminController {
     @Param('id') id: string,
     @Body() data: UpdateHotelRoomsParams,
   ) {
-    console.log(files);
     const response = [];
     files.forEach((file) => {
       const fileReponse = {
@@ -111,6 +114,6 @@ export class HotelAdminController {
       response.push(fileReponse);
     });
     data.images = response;
-    return await this.hotelService.updateHotelRoom(id, data);
+    return await this.hotelRoomService.update(id, data);
   }
 }

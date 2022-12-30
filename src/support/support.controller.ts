@@ -7,27 +7,33 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { SupportService } from './support.service';
+import { SupportRequestService } from './support.request.service';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt.auth.guard';
 import { Roles } from '../auth/guards/roles.meta';
 import { User } from '../auth/decorator/user.decorator';
+import { SupportRequestClientService } from './support.request.client.service';
+import { SupportRequestEmployeeService } from './support.request.employee.service';
 
 @UseGuards(RolesGuard)
 @UseGuards(JwtAuthGuard)
 @Controller('/api')
 export class SupportController {
-  constructor(private readonly supportService: SupportService) {}
+  constructor(
+    private readonly supportRequestService: SupportRequestService,
+    private readonly supportRequestClientService: SupportRequestClientService,
+    private readonly supportRequestEmployeeService: SupportRequestEmployeeService,
+  ) {}
 
   @Roles('client', 'manager')
   @Get('/common/support-requests/:id/messages')
   async getMessages(@Param('id') id) {
-    return await this.supportService.getMessages(id);
+    return await this.supportRequestService.getMessages(id);
   }
   @Post('/client/support-requests/')
   async createRequest(@User() currentUser: any, @Body() data) {
     data['user'] = currentUser.id;
-    return await this.supportService.createSupportRequest(data);
+    return await this.supportRequestClientService.createSupportRequest(data);
   }
 
   @Roles('client', 'manager')
@@ -39,7 +45,7 @@ export class SupportController {
   ) {
     data['author'] = currentUser.id;
     data['supportRequest'] = id;
-    return await this.supportService.sendMessage(data);
+    return await this.supportRequestService.sendMessage(data);
   }
 
   @Roles('client')
@@ -56,7 +62,7 @@ export class SupportController {
       limit: limit,
       offset: offset,
     };
-    return await this.supportService.findSupportRequests(params);
+    return await this.supportRequestService.findSupportRequests(params);
   }
 
   @Roles('manager')
@@ -72,7 +78,7 @@ export class SupportController {
       limit: limit,
       offset: offset,
     };
-    return await this.supportService.findSupportRequests(params);
+    return await this.supportRequestService.findSupportRequests(params);
   }
 
   @Roles('manager', 'client')
@@ -83,12 +89,28 @@ export class SupportController {
       supportRequest: id, //id
       createdBefore: new Date(),
     };
-    return await this.supportService.markMessagesAsRead(params);
+    if (currentUser.roles === 'manager') {
+      return await this.supportRequestEmployeeService.markMessagesAsRead(
+        params,
+      );
+    } else {
+      return await this.supportRequestClientService.markMessagesAsRead(params);
+    }
   }
 
   @Roles('manager', 'client')
   @Get('/common/support-requests/:id/messages/count/')
   async getUnreadCount(@User() currentUser: any, @Param('id') id: string) {
-    return await this.supportService.getUnreadCount(id, currentUser.id);
+    if (currentUser.roles === 'manager') {
+      return await this.supportRequestEmployeeService.getUnreadCount(
+        id,
+        currentUser.id,
+      );
+    } else {
+      return await this.supportRequestClientService.getUnreadCount(
+        id,
+        currentUser.id,
+      );
+    }
   }
 }

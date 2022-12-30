@@ -8,11 +8,13 @@ import {
   WsException,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { SupportService } from './support.service';
+import { SupportRequestService } from './support.request.service';
 import { UseGuards } from '@nestjs/common';
 import { GatewaySocketGuard } from '../auth/guards/jwt.auth.guard';
 import { Roles } from '../auth/guards/roles.meta';
 import { RolesSocketGuard } from '../auth/guards/roles.socket.guard';
+import { SupportRequestClientService } from './support.request.client.service';
+import { SupportRequestEmployeeService } from './support.request.employee.service';
 
 @UseGuards(GatewaySocketGuard)
 @UseGuards(RolesSocketGuard)
@@ -21,12 +23,16 @@ export class ChatGateway implements OnGatewayConnection {
   @WebSocketServer()
   server: Server;
 
-  constructor(private readonly supportService: SupportService) {}
+  constructor(
+    private readonly supportRequestService: SupportRequestService,
+    private readonly supportRequestClientService: SupportRequestClientService,
+    private readonly supportRequestEmployeeService: SupportRequestEmployeeService,
+  ) {}
 
   async handleConnection(socket: Socket) {
     if (socket.handshake.query.id !== undefined) {
       socket.data['chat'] = socket.handshake.query.id;
-      const user = await this.supportService.getUserFromSocket(socket);
+      const user = await this.supportRequestService.getUserFromSocket(socket);
 
       const data = {
         supportRequest: socket.data['chat'],
@@ -36,7 +42,7 @@ export class ChatGateway implements OnGatewayConnection {
       if (!(user instanceof WsException)) {
         data['user'] = user;
       }
-      const result = await this.supportService.findByRequest(data);
+      const result = await this.supportRequestService.findByRequest(data);
       if (result['status'] !== undefined && result['status'] === 'error') {
         return socket.disconnect();
       }
@@ -54,7 +60,7 @@ export class ChatGateway implements OnGatewayConnection {
     payload: string,
     @ConnectedSocket() socket: Socket,
   ) {
-    const user = await this.supportService.getUserFromSocket(socket);
+    const user = await this.supportRequestService.getUserFromSocket(socket);
     const chatId = socket.data.chat;
     const data = {
       author: null, //id
@@ -68,7 +74,7 @@ export class ChatGateway implements OnGatewayConnection {
       author['contactPhone'] = user.contactPhone;
       author['roles'] = user.roles;
     }
-    await this.supportService.sendMessage(data);
+    await this.supportRequestService.sendMessage(data);
     this.server.sockets.emit('receive_message', {
       text,
       author,
@@ -79,7 +85,7 @@ export class ChatGateway implements OnGatewayConnection {
   @SubscribeMessage('get_message')
   async getMessage(@ConnectedSocket() socket: Socket) {
     const chatId = socket.data.chat;
-    const message = await this.supportService.getMessages(chatId);
+    const message = await this.supportRequestService.getMessages(chatId);
     this.server.sockets.emit('get_message', {
       message,
     });
@@ -89,7 +95,8 @@ export class ChatGateway implements OnGatewayConnection {
   @SubscribeMessage('mark_message')
   async markMessagesAsRead(@ConnectedSocket() socket: Socket) {
     const chatId = socket.data.chat;
-    const user = await this.supportService.getUserFromSocket(socket);
+    const user = await this.supportRequestService.getUserFromSocket(socket);
+    let roles = null;
     const data = {
       user: null,
       supportRequest: chatId,
@@ -97,8 +104,13 @@ export class ChatGateway implements OnGatewayConnection {
     };
     if (!(user instanceof WsException)) {
       data['user'] = user._id;
+      roles = user.roles;
     }
-    await this.supportService.markMessagesAsRead(data);
+    if (roles === 'manager') {
+      await this.supportRequestEmployeeService.markMessagesAsRead(data);
+    } else {
+      await this.supportRequestClientService.markMessagesAsRead(data);
+    }
     this.server.sockets.emit('mark_message', {
       data: 'success',
     });
@@ -108,19 +120,27 @@ export class ChatGateway implements OnGatewayConnection {
   @SubscribeMessage('count_message')
   async getUnreadCount(@ConnectedSocket() socket: Socket) {
     const chatId = socket.data.chat;
-    const user = await this.supportService.getUserFromSocket(socket);
+    let roles, res;
+    const user = await this.supportRequestService.getUserFromSocket(socket);
     const data = {
       user: null,
       supportRequest: chatId,
     };
     if (!(user instanceof WsException)) {
       data['user'] = user._id;
+      roles = user.roles;
     }
-    const res = await this.supportService.getUnreadCount(
-      data.supportRequest,
-      data.user,
-    );
-
+    if (roles === 'manager') {
+      res = await this.supportRequestEmployeeService.getUnreadCount(
+        data.supportRequest,
+        data.user,
+      );
+    } else {
+      res = await this.supportRequestClientService.getUnreadCount(
+        data.supportRequest,
+        data.user,
+      );
+    }
     this.server.sockets.emit('count_message', {
       res,
     });
@@ -130,7 +150,7 @@ export class ChatGateway implements OnGatewayConnection {
   @SubscribeMessage('close_request')
   async closeRequest(@ConnectedSocket() socket: Socket) {
     const chatId = socket.data.chat;
-    await this.supportService.closeRequest(chatId);
+    await this.supportRequestEmployeeService.closeRequest(chatId);
     return socket.disconnect();
   }
 }

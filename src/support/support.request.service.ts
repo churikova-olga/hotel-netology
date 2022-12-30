@@ -8,9 +8,8 @@ import {
   SupportRequest,
 } from './mongoose/support.schema';
 import {
-  CreateSupportRequestDto,
   GetChatListParams,
-  MarkMessagesAsReadDto,
+  ISupportRequestService,
   SendMessageDto,
 } from '../interfaces/support.interfaces';
 import { Socket } from 'socket.io';
@@ -19,7 +18,7 @@ import { WsException } from '@nestjs/websockets';
 import { AuthService } from '../auth/auth.service';
 
 @Injectable()
-export class SupportService {
+export class SupportRequestService implements ISupportRequestService {
   constructor(
     @InjectModel(SupportRequest.name)
     private readonly SupportModel: Model<SupportDocument>,
@@ -27,13 +26,6 @@ export class SupportService {
     private readonly MessageModel: Model<MessageDocument>,
     private readonly AuthService: AuthService,
   ) {}
-
-  async createSupportRequest(
-    data: CreateSupportRequestDto,
-  ): Promise<SupportRequest> {
-    const supportRequest = new this.SupportModel(data);
-    return supportRequest.save();
-  }
 
   async sendMessage(data: SendMessageDto): Promise<Message> {
     const message = {
@@ -67,62 +59,16 @@ export class SupportService {
     params: GetChatListParams,
   ): Promise<SupportRequest[]> {
     const findParams = {};
-    if (params.offset) {
-      findParams['offset'] = params.offset;
-    }
-    if (params.limit) {
-      findParams['limit'] = params.limit;
-    }
     if (params.isActive) {
       findParams['isActive'] = params.isActive;
     }
     if (params.user !== null) {
       findParams['user'] = params.user;
     }
-    return await this.SupportModel.find(findParams).exec();
-  }
-  async markMessagesAsRead(params: MarkMessagesAsReadDto) {
-    const result = await this.SupportModel.findById({
-      _id: params.supportRequest,
-    }).populate({ path: 'messages', select: ['_id', 'readAt', 'author'] });
-
-    const message = [];
-
-    for (let i = 0; i < result.messages.length; i++) {
-      if (
-        result.messages[i]['readAt'] === undefined &&
-        result.messages[i]['author'].toString() !== params.user.toString()
-      ) {
-        message.push(result.messages[i]['_id']);
-      }
-    }
-    await this.MessageModel.updateMany(
-      { $expr: { $in: ['$_id', message] } },
-      { $set: { readAt: params.createdBefore } },
-    ).exec();
-
-    return { success: true };
-  }
-
-  async getUnreadCount(supportRequest: string, user: string) {
-    const message = [];
-    const result = await this.SupportModel.findById({
-      _id: supportRequest,
-    }).populate({ path: 'messages', select: ['_id', 'readAt', 'author'] });
-
-    for (let i = 0; i < result.messages.length; i++) {
-      if (
-        result.messages[i]['readAt'] === undefined &&
-        result.messages[i]['author'].toString() === user.toString()
-      ) {
-        message.push(result.messages[i]['_id']);
-      }
-    }
-    const count = await this.MessageModel.find({
-      $expr: { $in: ['$_id', message] },
-    }).exec();
-
-    return { count: count.length, messages: count };
+    return await this.SupportModel.find(findParams)
+      .limit(params.limit)
+      .skip(params.offset)
+      .exec();
   }
 
   async getUserFromSocket(socket: Socket) {
@@ -136,16 +82,6 @@ export class SupportService {
       throw new WsException('Invalid credentials.');
     }
     return user;
-  }
-
-  async closeRequest(supportRequest: string) {
-    // для менеджера
-    await this.SupportModel.findOneAndUpdate(
-      {
-        _id: supportRequest,
-      },
-      { isActive: false },
-    );
   }
 
   async findByRequest(data) {

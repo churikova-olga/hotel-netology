@@ -1,28 +1,32 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Booking, BookingDocument } from './mongoose/booking.schema';
 import {
+  Reservation,
+  ReservationDocument,
+} from './mongoose/reservation.schema';
+import {
+  IReservation,
   ReservationDto,
   ReservationSearchOptions,
-} from '../interfaces/booking.interfaces';
-import { HotelService } from '../Hotel/hotel.service';
+} from '../interfaces/reservation.interfaces';
+import { HotelRoomService } from '../hotel/hotel.room.service';
 
 @Injectable()
-export class BookingService {
+export class ReservationService implements IReservation {
   constructor(
-    @InjectModel(Booking.name)
-    private readonly BookingModel: Model<BookingDocument>,
-    private readonly hotelService: HotelService,
+    @InjectModel(Reservation.name)
+    private readonly ReservationModel: Model<ReservationDocument>,
+    private readonly hotelRoomService: HotelRoomService,
   ) {}
-  async addReservation(data: ReservationDto): Promise<Booking> {
+  async addReservation(data: ReservationDto): Promise<Reservation> {
     //проверка доступен ли номер
-    const room = await this.hotelService.findByidHotelRoom(data.roomId);
+    const room = await this.hotelRoomService.findById(data.roomId);
     if (room) {
       if (room.isEnabled === false) {
         throw new HttpException('isEnabled false', HttpStatus.BAD_REQUEST);
       }
-      const result = await this.BookingModel.find(
+      const result = await this.ReservationModel.find(
         {
           hotelId: data.hotelId,
           roomId: data.roomId,
@@ -42,20 +46,23 @@ export class BookingService {
         }
       }
 
-      const booking = new this.BookingModel(data);
+      const booking = new this.ReservationModel(data);
       return booking.save();
     } else throw new HttpException('room not exist', HttpStatus.BAD_REQUEST);
   }
 
-  async removeReservation(id: string): Promise<Booking> {
-    const result = await this.BookingModel.findOneAndRemove({ _id: id }).exec();
+  async removeReservation(id: string): Promise<void> {
+    const result = await this.ReservationModel.findOneAndRemove({
+      _id: id,
+    }).exec();
     if (!result) {
       throw new HttpException('reservation not exist', HttpStatus.BAD_REQUEST);
     }
-    return result;
   }
 
-  async getReservations(filter: ReservationSearchOptions): Promise<Booking[]> {
+  async getReservations(
+    filter: ReservationSearchOptions,
+  ): Promise<Reservation[]> {
     const filterSearch = { userId: filter.userId };
     if (filter.dateStart) {
       filterSearch['dateStart'] = filter.dateStart;
@@ -63,10 +70,10 @@ export class BookingService {
     if (filter.dateEnd) {
       filterSearch['dateEnd'] = filter.dateEnd;
     }
-    return await this.BookingModel.find(filterSearch).exec();
+    return await this.ReservationModel.find(filterSearch).exec();
   }
 
-  async getReservationId(id: string): Promise<Booking> {
-    return await this.BookingModel.findById({ _id: id }).exec();
+  async getReservationId(id: string): Promise<Reservation> {
+    return await this.ReservationModel.findById({ _id: id }).exec();
   }
 }

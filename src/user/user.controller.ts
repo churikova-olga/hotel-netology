@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { AuthService } from '../auth/auth.service';
-import { SearchUserParams, SignUp } from '../interfaces/user.interfaces';
+import { CreateUserParams, SignUp } from '../interfaces/user.interfaces';
 import { JwtAuthGuard } from '../auth/guards/jwt.auth.guard';
 import { Roles } from '../auth/guards/roles.meta';
 
@@ -23,12 +23,20 @@ export class UserController {
     private readonly authService: AuthService,
   ) {}
   @Post('/client/register')
-  async signup(@Body() data: SearchUserParams) {
+  async signup(@Body() data: CreateUserParams) {
     const email = await this.userService.findByEmail(data.email);
     if (email) {
-      throw new HttpException('reservation not exist', HttpStatus.BAD_REQUEST);
+      throw new HttpException('email not exist', HttpStatus.BAD_REQUEST);
     }
-
+    if (
+      !/(?=.*\d)(?=.*[a-z])(?=.*[A-Z])/.test(data.password) ||
+      data.password.length < 6
+    ) {
+      throw new Error('Please enter a valid password');
+    }
+    if (!/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(data.email)) {
+      throw new Error('Please enter a valid email');
+    }
     return await this.userService.create(data);
   }
 
@@ -44,7 +52,6 @@ export class UserController {
 
   @UseGuards(JwtAuthGuard)
   @Post('/auth/logout')
-  // @Session() session: Record<string, any>
   async logout(@Req() request) {
     request.session.destroy();
     if (request.session) {
